@@ -25,11 +25,13 @@ class ArxivFeed(Feed):
         return {
             "type": "arxiv",
             "category": self.category,
-            "id": post.id,
-            "title": post.title,
-            "summary": post.summary,
-            "author": post.author,
-            "url": post.link,
+            "id": post.get("id", ""),
+            "title": post.get("title", ""),
+            "summary": post.get("summary", ""),
+            "author": post.get("author", ""),
+            "published": post.get("published", ""),
+            "updated": post.get("updated", ""),
+            "url": post.get("link", ""),
         }
 
     async def async_fetch(self, n: int):
@@ -50,7 +52,19 @@ class ArxivFeed(Feed):
                     data = await response.read()
                     feed = feedparser.parse(data)
                     entries = feed.entries[:fetch_size]
-                    parsed_entries = [self.parse(entry) for entry in entries]
+
+                    updated_time = feed.feed.updated
+                    published_time = feed.feed.published
+                    parsed_entries = [
+                        self.parse(
+                            {
+                                **entry,
+                                "published": published_time,
+                                "updated": updated_time,
+                            }
+                        )
+                        for entry in entries
+                    ]
 
                     # Update the cache
                     self.cache = parsed_entries

@@ -54,16 +54,19 @@ class RedditFeed(Feed):
             requestor_kwargs={"session": session},
         )
 
-    def parse(self, post):
+    def parse(self, submission):
         return {
             "type": "reddit",
             "community": self.community,
-            "id": post.name,
-            "title": post.title,
-            "author": post.author.name,
-            "ups": post.ups,
-            "downs": post.downs,
-            "url": post.url,
+            "id": submission.name,
+            "title": submission.title,
+            "author": submission.author.name,
+            "ups": submission.ups,
+            "downs": submission.downs,
+            "num_comments": submission.num_comments,
+            "over_18": submission.over_18,
+            "created_utc": submission.created_utc,
+            "url": submission.url,
         }
 
     async def async_fetch(self, n: int):
@@ -81,30 +84,30 @@ class RedditFeed(Feed):
 
             min_ups = RedditFeed.MIN_UPS
             scaling = 1
-            parsed_posts = []
+            parsed_submissions = []
             last_seen_id = None
 
             async with ClientSession() as session:
                 client = self.create_client(session)
                 subreddit = await client.subreddit(self.community)
-                while len(parsed_posts) < n:
+                while len(parsed_submissions) < n:
                     params = {"after": last_seen_id} if last_seen_id else {}
-                    async for post in subreddit.hot(
+                    async for submission in subreddit.hot(
                         limit=fetch_size * scaling, params=params
                     ):
-                        if post.ups >= min_ups:
-                            parsed_post = self.parse(post)
-                            parsed_posts.append(parsed_post)
+                        if submission.ups >= min_ups:
+                            parsed_submission = self.parse(submission)
+                            parsed_submissions.append(parsed_submission)
 
-                        last_seen_id = post.name
+                        last_seen_id = submission.name
 
                     scaling *= 2
 
-                    if len(parsed_posts) >= n:
+                    if len(parsed_submissions) >= n:
                         break  # Fetched enough posts, exit the loop
 
                 # Update the cache
-                self.cache = parsed_posts
+                self.cache = parsed_submissions
                 logger.debug(f"Cache size: {len(self.cache)}")
                 self.cache_expiration = datetime.now() + self.cache_duration
                 logger.debug(f"Cache expiration: {self.cache_expiration}")
