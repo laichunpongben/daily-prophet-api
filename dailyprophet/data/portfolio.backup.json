@@ -1,0 +1,21 @@
+[
+    ["reddit", "singularity", 0.1],
+    ["reddit", "chess", 0.08],
+    ["reddit", "finedining", 0.1],
+    ["arxiv", "cs.LG", 0.1],
+    ["youtube", "UCQHX6ViZmPsWiYSFAyS0a3Q", 0.1],
+    ["youtube", "UCu_YquoQYKR3GpP82TO-zRw", 0.1],
+    ["openweathermap", "Hong Kong", 0.02],
+    ["openweathermap", "Singapore", 0.02],
+    ["openweathermap", "Tokyo", 0.02],
+    ["openweathermap", "Auckland", 0.02],
+    ["openweathermap", "Sydney", 0.02],
+    ["openweathermap", "Paris", 0.02],
+    ["openweathermap", "London", 0.02],
+    ["openweathermap", "Edinburgh", 0.02],
+    ["openweathermap", "Glasgow", 0.02],
+    ["openweathermap", "Lisbon", 0.02],
+    ["openweathermap", "Amsterdam", 0.02],
+    ["foursquare", "fine dining;13049;Paris,France;1000;POPULARITY", 0.1],
+    ["foursquare", "fine dining;13049;Paris,France;1000;RATING", 0.1]
+]

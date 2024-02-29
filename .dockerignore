@@ -1,0 +1,14 @@
+__pycache__
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv
+.dockerignore
+.git
+.gitignore
+*.log
+
+**/secrets/
+**/archive/
