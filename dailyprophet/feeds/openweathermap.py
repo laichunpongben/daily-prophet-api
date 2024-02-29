@@ -1,29 +1,41 @@
 import aiohttp
 
 from dailyprophet.feeds.feed import Feed
+from dailyprophet.feeds.util import flatten_dict
 from dailyprophet.configs import OPENWEATHERMAP_API_KEY
 
 
 class OpenWeatherMapFeed(Feed):
+    CURRENT_WEATHER_BASE_URL = "http://api.openweathermap.org/data/2.5/weather"
+    DAILY_FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast/daily"
+    GEO_BASE_URL = "http://api.openweathermap.org/geo/1.0/direct"
+    ONECALL_BASE_URL = "http://api.openweathermap.org/data/3.0/onecall"
+
     def __init__(self, city: str):
         super().__init__()
-        self.base_url = "http://api.openweathermap.org/data/2.5/weather"
-        self.geo_base_url = "http://api.openweathermap.org/geo/1.0/direct"
-        self.onecall_base_url = "http://api.openweathermap.org/data/3.0/onecall"
         self.api_key = OPENWEATHERMAP_API_KEY
         self.city = city
 
     async def async_fetch(self, n: int = 1):
         try:
-            current_weather_data = await self.get_current_weather(self.city)
-            parsed_data = self.parse(current_weather_data)
+            # current_weather_data = await self.get_current_weather(self.city)
+            daily_forcast_data = await self.get_daily_forecast(self.city)
+            parsed_data = self.parse(daily_forcast_data)
             return [parsed_data]
         except Exception as e:
             return [{"error": f"An error occurred: {str(e)}"}]
 
     async def get_current_weather(self, city):
         params = {"q": city, "appid": self.api_key}
-        return await self._make_async_request(self.base_url, params)
+        return await self._make_async_request(
+            OpenWeatherMapFeed.CURRENT_WEATHER_BASE_URL, params
+        )
+
+    async def get_daily_forecast(self, city):
+        params = {"q": city, "appid": self.api_key}
+        return await self._make_async_request(
+            OpenWeatherMapFeed.DAILY_FORECAST_BASE_URL, params
+        )
 
     async def _make_async_request(self, url, params):
         async with aiohttp.ClientSession() as session:
@@ -36,6 +48,9 @@ class OpenWeatherMapFeed(Feed):
                     return {"error": f"Error: {data['message']}"}
 
     def parse(self, weather_data):
+        return self.parse_daily_forecast(weather_data)
+
+    def parse_current_weather(self, weather_data):
         city_name = weather_data.get("name", "")
         temperature = self.correct_temperature(weather_data.get("main", {}).get("temp"))
         feels_like = self.correct_temperature(
@@ -50,6 +65,15 @@ class OpenWeatherMapFeed(Feed):
             "feels_like": feels_like,
             "description": weather_description,
         }
+
+    def parse_daily_forecast(self, weather_data):
+        flattened_dict = flatten_dict(weather_data)
+
+        for key, value in flattened_dict.items():
+            if "temp" in key and isinstance(value, (int, float)):
+                flattened_dict[key] = self.correct_temperature(value)
+
+        return {"type": "openweathermap", **flattened_dict}
 
     def correct_temperature(self, temp_kelvin):
         # Helper function to correct temperature from Kelvin to Celsius
