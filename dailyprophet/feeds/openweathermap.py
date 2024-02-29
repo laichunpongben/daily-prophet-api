@@ -62,6 +62,7 @@ class OpenWeatherMapFeed(Feed):
         parsed_data = self.parse(current_weather_data)
         return [parsed_data]
 
+
 if __name__ == "__main__":
     import asyncio
 

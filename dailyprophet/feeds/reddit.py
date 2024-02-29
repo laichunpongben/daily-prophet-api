@@ -20,19 +20,21 @@
 'author_flair_text_color': None, 'permalink': '/r/singularity/comments/1b012a1/the_future_of_software_development/', 'parent_whitelist_status': 'all_ads', 'stickied': False, 'url': 'https://i.imgflip.com/8h16tq.jpg',
 'subreddit_subscribers': 1953563, 'created_utc': 1708900213.0, 'num_crossposts': 1, 'media': None, 'is_video': False, '_fetched': False, '_additional_fetch_params': {}, '_comments_by_id': {}}
 """
+
 import logging
 import asyncio
 from datetime import datetime, timedelta
 from math import ceil
-from random import choices
 
 import asyncpraw
 from aiohttp import ClientSession
 
 from dailyprophet.feeds.feed import Feed
+from dailyprophet.feeds.util import expo_decay_weighted_sample
 from dailyprophet.configs import REDDIT_CLIENT_ID, REDDIT_CLEINT_SECRET
 
 logger = logging.getLogger(__name__)
+
 
 class RedditFeed(Feed):
     MIN_UPS = 100
@@ -46,12 +48,12 @@ class RedditFeed(Feed):
 
     def create_client(self, session: ClientSession):
         return asyncpraw.Reddit(
-                    client_id=REDDIT_CLIENT_ID,
-                    client_secret=REDDIT_CLEINT_SECRET,
-                    user_agent="daily-prophet/0.0.1",
-                    requestor_kwargs={"session": session},
-                )
-        
+            client_id=REDDIT_CLIENT_ID,
+            client_secret=REDDIT_CLEINT_SECRET,
+            user_agent="daily-prophet/0.0.1",
+            requestor_kwargs={"session": session},
+        )
+
     def parse(self, post):
         return {
             "type": "reddit",
@@ -67,9 +69,13 @@ class RedditFeed(Feed):
     async def async_fetch(self, n: int):
         try:
             # Check if the cache is still valid
-            if self.cache is not None and datetime.now() < self.cache_expiration and n <= len(self.cache):
+            if (
+                self.cache is not None
+                and datetime.now() < self.cache_expiration
+                and n <= len(self.cache)
+            ):
                 logger.debug("Fetching from cache")
-                return choices(self.cache, k=n)
+                return expo_decay_weighted_sample(self.cache, k=n)
 
             fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
 
@@ -83,7 +89,9 @@ class RedditFeed(Feed):
                 subreddit = await client.subreddit(self.community)
                 while len(parsed_posts) < n:
                     params = {"after": last_seen_id} if last_seen_id else {}
-                    async for post in subreddit.hot(limit=fetch_size * scaling, params=params):
+                    async for post in subreddit.hot(
+                        limit=fetch_size * scaling, params=params
+                    ):
                         if post.ups >= min_ups:
                             parsed_post = self.parse(post)
                             parsed_posts.append(parsed_post)
@@ -101,7 +109,7 @@ class RedditFeed(Feed):
                 self.cache_expiration = datetime.now() + self.cache_duration
                 logger.debug(f"Cache expiration: {self.cache_expiration}")
 
-            return choices(self.cache, k=n)
+            return expo_decay_weighted_sample(self.cache, k=n)
         except Exception as e:
             logger.error(f"Error fetching Reddit posts asynchronously: {e}")
             return []
@@ -109,6 +117,7 @@ class RedditFeed(Feed):
     def fetch(self, n: int):
         # For backward compatibility, call the asynchronous version synchronously
         return asyncio.run(self.async_fetch(n))
+
 
 if __name__ == "__main__":
     import time

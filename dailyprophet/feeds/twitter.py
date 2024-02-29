@@ -11,6 +11,7 @@ from dailyprophet.configs import (
 
 logger = logging.getLogger(__name__)
 
+
 class TwitterFeed(Feed):
     BASE_URL = "https://api.twitter.com/2/tweets/search/recent"
 
@@ -50,7 +51,11 @@ class TwitterFeed(Feed):
             "user": tweet["user"]["screen_name"],
             "user_name": tweet["user"]["name"],
             "created_at": tweet["created_at"],
-            "url": tweet["entities"]["urls"][0]["expanded_url"] if tweet["entities"]["urls"] else None,
+            "url": (
+                tweet["entities"]["urls"][0]["expanded_url"]
+                if tweet["entities"]["urls"]
+                else None
+            ),
         }
 
     def fetch(self, n: int):
@@ -66,12 +71,15 @@ class TwitterFeed(Feed):
             )
             print("client created")
 
-            tweets = client.search_recent_tweets(self.query, max_results=n, user_auth=False)
+            tweets = client.search_recent_tweets(
+                self.query, max_results=n, user_auth=False
+            )
             parsed_tweets = [self.parse(tweet) for tweet in tweets]
             return parsed_tweets
         except Exception as e:
             logger.error(f"Error fetching Twitter feed: {e}")
             return []
+
 
 if __name__ == "__main__":
     twitter = TwitterFeed("Haaland")

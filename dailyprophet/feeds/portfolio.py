@@ -59,7 +59,7 @@ class FeedPortfolio:
             setting = json.load(f)
             for feed_type, name, weight in setting:
                 self.add(feed_type, name, weight)
-    
+
     def load_setting_from_backup_file(self):
         self.portfolio = {}
         with open(FeedPortfolio.PORTFOLIO_BACKUP_FILE_PATH, "r") as f:
@@ -91,7 +91,7 @@ class FeedPortfolio:
             return feed_class()
         else:
             return feed_class(name)
-        
+
     async def async_fetch_feed(self, key, count):
         feed = self.portfolio[key].feed
         return await feed.async_fetch(count)
@@ -129,7 +129,9 @@ class FeedPortfolio:
             ]
             sampled_feeds = await asyncio.gather(*tasks)
 
-        sampled_feeds = [feed for sublist in sampled_feeds for feed in sublist]  # flattening
+        sampled_feeds = [
+            feed for sublist in sampled_feeds for feed in sublist
+        ]  # flattening
         shuffle(sampled_feeds)  # can be sorted by priority instead if available
 
         return sampled_feeds
@@ -139,6 +141,7 @@ async def main():
     portfolio = FeedPortfolio()
     out = await portfolio.async_sample(50)
     return out
+
 
 if __name__ == "__main__":
     import asyncio

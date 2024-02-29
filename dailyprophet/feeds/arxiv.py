@@ -1,6 +1,5 @@
 import asyncio
 from datetime import datetime, timedelta
-from random import choices
 from math import ceil
 import logging
 
@@ -8,8 +7,10 @@ import aiohttp
 import feedparser
 
 from dailyprophet.feeds.feed import Feed
+from dailyprophet.feeds.util import expo_decay_weighted_sample
 
 logger = logging.getLogger(__name__)
+
 
 class ArxivFeed(Feed):
     def __init__(self, category):
@@ -34,10 +35,14 @@ class ArxivFeed(Feed):
     async def async_fetch(self, n: int):
         try:
             # Check if the cache is still valid
-            if self.cache is not None and datetime.now() < self.cache_expiration and n <= len(self.cache):
+            if (
+                self.cache is not None
+                and datetime.now() < self.cache_expiration
+                and n <= len(self.cache)
+            ):
                 logger.debug("Fetching from cache")
-                return choices(self.cache, k=n)
-            
+                return expo_decay_weighted_sample(self.cache, k=n)
+
             fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
 
             async with aiohttp.ClientSession() as session:
@@ -53,7 +58,7 @@ class ArxivFeed(Feed):
                     self.cache_expiration = datetime.now() + self.cache_duration
                     logger.debug(f"Cache expiration: {self.cache_expiration}")
 
-                    return choices(self.cache, k=n)
+                    return expo_decay_weighted_sample(self.cache, k=n)
         except Exception as e:
             logger.error(f"Error fetching ArXiv feed asynchronously: {e}")
             return []
@@ -61,6 +66,7 @@ class ArxivFeed(Feed):
     def fetch(self, n: int):
         # For backward compatibility, call the asynchronous version synchronously
         return asyncio.run(self.async_fetch(n))
+
 
 if __name__ == "__main__":
     arxiv = ArxivFeed("cs.LG")

@@ -5,18 +5,20 @@
 'thumbnails': {'default': {'url': 'https://i.ytimg.com/vi/KjqpLdO3_CU/default.jpg', 'width': 120, 'height': 90}, 'medium': {'url': 'https://i.ytimg.com/vi/KjqpLdO3_CU/mqdefault.jpg', 'width': 320, 'height': 180},
 'high': {'url': 'https://i.ytimg.com/vi/KjqpLdO3_CU/hqdefault.jpg', 'width': 480, 'height': 360}}, 'channelTitle': 'GothamChess', 'liveBroadcastContent': 'none', 'publishTime': '2024-02-25T17:45:00Z'}}
 """
+
 import asyncio
 from datetime import datetime, timedelta
 from math import ceil
-from random import choices
 import logging
 
 import aiohttp
 
 from dailyprophet.feeds.feed import Feed
+from dailyprophet.feeds.util import expo_decay_weighted_sample
 from dailyprophet.configs import YOUTUBE_API_KEY
 
 logger = logging.getLogger(__name__)
+
 
 class YoutubeFeed(Feed):
     def __init__(self, channel_id):
@@ -45,9 +47,13 @@ class YoutubeFeed(Feed):
     async def async_fetch(self, n: int):
         try:
             # Check if the cache is still valid
-            if self.cache is not None and datetime.now() < self.cache_expiration and n <= len(self.cache):
+            if (
+                self.cache is not None
+                and datetime.now() < self.cache_expiration
+                and n <= len(self.cache)
+            ):
                 logger.debug("Fetching from cache")
-                return choices(self.cache, k=n)
+                return expo_decay_weighted_sample(self.cache, k=n)
 
             fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
 
@@ -65,7 +71,7 @@ class YoutubeFeed(Feed):
                     self.cache_expiration = datetime.now() + self.cache_duration
                     logger.debug(f"Cache expiration: {self.cache_expiration}")
 
-                    return choices(self.cache, k=n)
+                    return expo_decay_weighted_sample(self.cache, k=n)
         except Exception as e:
             logger.error(f"Error fetching YouTube feed asynchronously: {e}")
             return []
@@ -73,6 +79,7 @@ class YoutubeFeed(Feed):
     def fetch(self, n: int):
         # For backward compatibility, call the asynchronous version synchronously
         return asyncio.run(self.async_fetch(n))
+
 
 if __name__ == "__main__":
     youtube = YoutubeFeed("UCQHX6ViZmPsWiYSFAyS0a3Q")

@@ -62,7 +62,10 @@ async def pop():
         }
         response.update(feed)
     else:
-        response = {"message": "Error. Feed queue is empty. Please fetch new feeds, and wait for a few seconds!", "type": "error"}
+        response = {
+            "message": "Error. Feed queue is empty. Please fetch new feeds, and wait for a few seconds!",
+            "type": "error",
+        }
     return JSONResponse(content=response)
 
 
@@ -78,10 +81,13 @@ def pop_many(count: int = 1):
     if popped_feeds:
         response = {
             "message": f"{count} feed(s) popped successfully",
-            "feeds": popped_feeds
+            "feeds": popped_feeds,
         }
     else:
-        response = {"message": "Error. Feed queue is empty. Please fetch new feeds, and wait for a few seconds!", "type": "error"}
+        response = {
+            "message": "Error. Feed queue is empty. Please fetch new feeds, and wait for a few seconds!",
+            "type": "error",
+        }
 
     return JSONResponse(content=response)
 
@@ -97,7 +103,11 @@ def reset():
 def show_portfolio():
     try:
         setting = portfolio.get_setting()
-        return {"message": "Portfolio shown successfully", "type": "portfolio", "setting": setting}
+        return {
+            "message": "Portfolio shown successfully",
+            "type": "portfolio",
+            "setting": setting,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error showing portfolio: {str(e)}"
@@ -123,7 +133,11 @@ def reset_portfolio():
         portfolio.load_setting_from_backup_file()
         portfolio.save_setting_to_file()
         setting = portfolio.get_setting()
-        return {"message": "Portfolio reset successfully", "type": "portfolio", "setting": setting}
+        return {
+            "message": "Portfolio reset successfully",
+            "type": "portfolio",
+            "setting": setting,
+        }
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error resetting portfolio: {str(e)}"
