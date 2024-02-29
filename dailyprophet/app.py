@@ -1,7 +1,7 @@
 from typing import List
 import logging
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -45,16 +45,19 @@ async def new(count: int):
 
 
 @app.get("/pop")
-async def pop():
+async def pop(background_tasks: BackgroundTasks):
     feed = queue.pop()
     size = queue.size()
     refill_threshold = 50
     refill_size = 50
 
-    if size < refill_threshold:
+    async def refill_queue(refill_size: int):
         feeds = await portfolio.async_sample(refill_size)
         queue.push(feeds)
-        feed = queue.pop()
+
+    if size < refill_threshold:
+        # Schedule the async_sample to run in the background
+        background_tasks.add_task(refill_queue, refill_size)
 
     if feed:
         response = {
