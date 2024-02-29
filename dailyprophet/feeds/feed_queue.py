@@ -13,6 +13,9 @@ class FeedQueue:
         self.q = deque()
         self.set = set()
 
+    def size(self):
+        return len(self.q)
+
     def push(self, feeds: List[dict]):
         current_timestamp = datetime.now().timestamp()
         for feed in feeds:

@@ -37,16 +37,24 @@ def landing():
 
 
 @app.get("/new/{count}")
-def new(count: int):
-    feeds = portfolio.sample(count)
+async def new(count: int):
+    feeds = await portfolio.async_sample(count)
     queue.push(feeds)
 
     return {"message": f"{count} feeds sampled and pushed to the queue"}
 
 
 @app.get("/pop")
-def pop():
+async def pop():
     feed = queue.pop()
+    size = queue.size()
+    refill_threshold = 50
+    refill_size = 50
+
+    if size < refill_threshold:
+        feeds = await portfolio.async_sample(refill_size)
+        queue.push(feeds)
+        feed = queue.pop()
 
     if feed:
         response = {

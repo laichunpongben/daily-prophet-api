@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 
 from dailyprophet.feeds.feed import Feed
 from dailyprophet.configs import OPENWEATHERMAP_API_KEY
@@ -13,35 +13,27 @@ class OpenWeatherMapFeed(Feed):
         self.api_key = OPENWEATHERMAP_API_KEY
         self.city = city
 
-    def get_current_weather(self, city):
-        params = {"q": city, "appid": self.api_key}
-        return self._make_request(self.base_url, params)
-
-    def geocode_city(self, city):
-        params = {"q": city, "appid": self.api_key}
-        return self._make_request(self.geo_base_url, params)
-
-    def get_weather_by_coordinates(self, lat, lon):
-        params = {
-            "lat": lat,
-            "lon": lon,
-            "exclude": "minutely,hourly",
-            "appid": self.api_key,
-        }
-        return self._make_request(self.onecall_base_url, params)
-
-    def _make_request(self, url, params):
+    async def async_fetch(self, n: int = 1):
         try:
-            response = requests.get(url, params=params)
-            data = response.json()
-
-            if response.status_code == 200:
-                return data
-            else:
-                return {"error": f"Error: {data['message']}"}
-
+            current_weather_data = await self.get_current_weather(self.city)
+            parsed_data = self.parse(current_weather_data)
+            return [parsed_data]
         except Exception as e:
-            return {"error": f"An error occurred: {str(e)}"}
+            return [{"error": f"An error occurred: {str(e)}"}]
+
+    async def get_current_weather(self, city):
+        params = {"q": city, "appid": self.api_key}
+        return await self._make_async_request(self.base_url, params)
+
+    async def _make_async_request(self, url, params):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                data = await response.json()
+
+                if response.status == 200:
+                    return data
+                else:
+                    return {"error": f"Error: {data['message']}"}
 
     def parse(self, weather_data):
         city_name = weather_data.get("name", "")
@@ -69,3 +61,13 @@ class OpenWeatherMapFeed(Feed):
         current_weather_data = self.get_current_weather(self.city)
         parsed_data = self.parse(current_weather_data)
         return [parsed_data]
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_async_fetch():
+        weather_feed = OpenWeatherMapFeed("Hong Kong")
+        result = await weather_feed.async_fetch()
+        print(result)
+
+    asyncio.run(test_async_fetch())

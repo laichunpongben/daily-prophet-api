@@ -1,31 +1,26 @@
+import asyncio
+from datetime import datetime, timedelta
+from random import choices
+from math import ceil
 import logging
 
+import aiohttp
 import feedparser
 
 from dailyprophet.feeds.feed import Feed
 
-
 logger = logging.getLogger(__name__)
-
 
 class ArxivFeed(Feed):
     def __init__(self, category):
         super().__init__()
         self.category = category
         self.feed_url = f"http://export.arxiv.org/rss/{category}"
+        self.cache = None
+        self.cache_expiration = None
+        self.cache_duration = timedelta(hours=1)
 
     def parse(self, post):
-        """
-        {'title': 'APTQ: Attention-aware Post-Training Mixed-Precision Quantization for Large Language Models', 'title_detail': {'type': 'text/plain', 'language': None, 'base': 'https://rss.arxiv.org/rss/cs.LG',
-        'value': 'APTQ: Attention-aware Post-Training Mixed-Precision Quantization for Large Language Models'}, 'links': [{'rel': 'alternate', 'type': 'text/html', 'href': 'https://arxiv.org/abs/2402.14866'}],
-        'link': 'https://arxiv.org/abs/2402.14866', 'summary': "arXiv:2402.14866v1 Announce Type: new \nAbstract: Large Language Models (LLMs) ...... quantized LLMs.",
-        'summary_detail': {'type': 'text/html', 'language': None, 'base': 'https://rss.arxiv.org/rss/cs.LG',
-        'value': "arXiv:2402.14866v1 Announce Type: new \nAbstract: Large Language Models (LLMs) ...... quantized LLMs."}, 'id': 'oai:arXiv.org:2402.14866v1', 'guidislink': False,
-        'tags': [{'term': 'cs.LG', 'scheme': None, 'label': None}, {'term': 'cs.AI', 'scheme': None, 'label': None}, {'term': 'cs.CL', 'scheme': None, 'label': None}], 'arxiv_announce_type': 'new',
-        'rights': 'http://arxiv.org/licenses/nonexclusive-distrib/1.0/', 'rights_detail': {'type': 'text/plain', 'language': None, 'base': 'https://rss.arxiv.org/rss/cs.LG',
-        'value': 'http://arxiv.org/licenses/nonexclusive-distrib/1.0/'}, 'authors': [{'name': 'Ziyi Guan, Hantao Huang, Yupeng Su, Hong Huang, Ngai Wong, Hao Yu'}],
-        'author': 'Ziyi Guan, Hantao Huang, Yupeng Su, Hong Huang, Ngai Wong, Hao Yu', 'author_detail': {'name': 'Ziyi Guan, Hantao Huang, Yupeng Su, Hong Huang, Ngai Wong, Hao Yu'}}
-        """
         return {
             "type": "arxiv",
             "category": self.category,
@@ -36,12 +31,40 @@ class ArxivFeed(Feed):
             "url": post.link,
         }
 
-    def fetch(self, n: int):
+    async def async_fetch(self, n: int):
         try:
-            feed = feedparser.parse(self.feed_url)
-            entries = feed.entries[:n]
-            parsed_entries = [self.parse(entry) for entry in entries]
-            return parsed_entries
+            # Check if the cache is still valid
+            if self.cache is not None and datetime.now() < self.cache_expiration and n <= len(self.cache):
+                logger.debug("Fetching from cache")
+                return choices(self.cache, k=n)
+            
+            fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
+
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.feed_url) as response:
+                    data = await response.read()
+                    feed = feedparser.parse(data)
+                    entries = feed.entries[:fetch_size]
+                    parsed_entries = [self.parse(entry) for entry in entries]
+
+                    # Update the cache
+                    self.cache = parsed_entries
+                    logger.debug(f"Cache size: {len(self.cache)}")
+                    self.cache_expiration = datetime.now() + self.cache_duration
+                    logger.debug(f"Cache expiration: {self.cache_expiration}")
+
+                    return choices(self.cache, k=n)
         except Exception as e:
-            logger.error(f"Error fetching ArXiv feed: {e}")
+            logger.error(f"Error fetching ArXiv feed asynchronously: {e}")
             return []
+
+    def fetch(self, n: int):
+        # For backward compatibility, call the asynchronous version synchronously
+        return asyncio.run(self.async_fetch(n))
+
+if __name__ == "__main__":
+    arxiv = ArxivFeed("cs.LG")
+    out = arxiv.fetch(2)
+    print(out)
+    out = arxiv.fetch(2)
+    print(out)

@@ -3,7 +3,8 @@ import json
 from dataclasses import dataclass
 from random import choices, shuffle
 from collections import Counter
-import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 from typing import List
 import logging
 
@@ -12,7 +13,6 @@ from dailyprophet.feeds.reddit import RedditFeed
 from dailyprophet.feeds.arxiv import ArxivFeed
 from dailyprophet.feeds.youtube import YoutubeFeed
 from dailyprophet.feeds.openweathermap import OpenWeatherMapFeed
-from dailyprophet.feeds.foursquare import FoursquareFeed
 
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,6 @@ class FeedPortfolio:
         "arxiv": ArxivFeed,
         "youtube": YoutubeFeed,
         "openweathermap": OpenWeatherMapFeed,
-        "foursquare": FoursquareFeed,
     }
 
     PORTFOLIO_FILE_PATH = os.path.join(
@@ -92,8 +91,12 @@ class FeedPortfolio:
             return feed_class()
         else:
             return feed_class(name)
+        
+    async def async_fetch_feed(self, key, count):
+        feed = self.portfolio[key].feed
+        return await feed.async_fetch(count)
 
-    def sample(self, n: int):
+    async def async_sample(self, n: int):
         if not self.portfolio:
             return []
 
@@ -104,23 +107,45 @@ class FeedPortfolio:
         sampled_feed_counts = dict(Counter(sampled_keys))
         logger.debug(sampled_feed_counts)
 
+        async def fetch_sampled_feed(key, count):
+            return await self.async_fetch_feed(key, count)
+
         sampled_feeds = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(self._fetch_feed, key, count)
+
+        def run(corofn, *args):
+            loop = asyncio.new_event_loop()
+            try:
+                coro = corofn(*args)
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(coro)
+            finally:
+                loop.close()
+
+        with ThreadPoolExecutor() as executor:
+            loop = asyncio.get_event_loop()
+            tasks = [
+                loop.run_in_executor(executor, run, fetch_sampled_feed, key, count)
                 for key, count in sampled_feed_counts.items()
             ]
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    result = future.result()
-                    sampled_feeds.extend(result)
-                except Exception as e:
-                    logger.error(f"Error fetching feeds: {e}")
+            sampled_feeds = await asyncio.gather(*tasks)
 
+        sampled_feeds = [feed for sublist in sampled_feeds for feed in sublist]  # flattening
         shuffle(sampled_feeds)  # can be sorted by priority instead if available
 
         return sampled_feeds
 
-    def _fetch_feed(self, key, count):
-        feed = self.portfolio[key].feed
-        return feed.fetch(count)
+
+async def main():
+    portfolio = FeedPortfolio()
+    out = await portfolio.async_sample(50)
+    return out
+
+if __name__ == "__main__":
+    import asyncio
+    import time
+
+    start = time.time()
+    out = asyncio.run(main())
+    print(out)
+    end = time.time()
+    print(end - start)
