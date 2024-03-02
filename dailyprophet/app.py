@@ -1,13 +1,13 @@
 from typing import List
 import logging
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from dailyprophet.feeds.portfolio import FeedPortfolio
-from dailyprophet.feeds.feed_queue import FeedQueue
+from dailyprophet.readers.reader_manager import ReaderManager
+from dailyprophet.auth import get_current_user
 
 
 class PortfolioSetting(BaseModel):
@@ -25,8 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-portfolio = FeedPortfolio()
-queue = FeedQueue()
+reader_manager = ReaderManager()
 
 
 @app.get("/")
@@ -37,23 +36,31 @@ def landing():
 
 
 @app.get("/new/{count}")
-async def new(count: int):
-    feeds = await portfolio.async_sample(count)
-    queue.push(feeds)
+async def new(
+    count: int,
+    current_user: str = Depends(get_current_user),
+):
+    reader = reader_manager[current_user]
+
+    await reader.async_new(count)
 
     return {"message": f"{count} feeds sampled and pushed to the queue"}
 
 
 @app.get("/pop")
-async def pop(background_tasks: BackgroundTasks):
-    feed = queue.pop()
-    size = queue.size()
+async def pop(
+    background_tasks: BackgroundTasks,
+    current_user: str = Depends(get_current_user),
+):
+    reader = reader_manager[current_user]
+
+    feed = await reader.async_pop()
+    size = reader.queue.size()
     refill_threshold = 50
     refill_size = 50
 
     async def refill_queue(refill_size: int):
-        feeds = await portfolio.async_sample(refill_size)
-        queue.push(feeds)
+        await reader.async_new(refill_size)
 
     if size < refill_threshold:
         # Schedule the async_sample to run in the background
@@ -66,18 +73,23 @@ async def pop(background_tasks: BackgroundTasks):
         response.update(feed)
     else:
         response = {
-            "message": "Error. Feed queue is empty. Please fetch new feeds, and wait for a few seconds!",
+            "message": "Error. We are pulling new feeds to the queue. Please wait for a few seconds!",
             "type": "error",
         }
     return JSONResponse(content=response)
 
 
 @app.get("/pop/{count}")
-def pop_many(count: int = 1):
+async def pop_many(
+    count: int = 1,
+    current_user: str = Depends(get_current_user),
+):
+    reader = reader_manager[current_user]
+
     popped_feeds = []
 
     for _ in range(count):
-        feed = queue.pop()
+        feed = await reader.async_pop()
         if feed:
             popped_feeds.append(feed)
 
@@ -96,16 +108,24 @@ def pop_many(count: int = 1):
 
 
 @app.get("/reset")
-def reset():
-    queue.clear()
+def reset(
+    current_user: str = Depends(get_current_user),
+):
+    reader = reader_manager[current_user]
+
+    reader.queue.clear()
 
     return {"message": "Queue cleared"}
 
 
 @app.get("/portfolio")
-def show_portfolio():
+def show_portfolio(
+    current_user: str = Depends(get_current_user),
+):
     try:
-        setting = portfolio.get_setting()
+        reader = reader_manager[current_user]
+
+        setting = reader.portfolio.get_setting()
         return {
             "message": "Portfolio shown successfully",
             "type": "portfolio",
@@ -118,11 +138,16 @@ def show_portfolio():
 
 
 @app.post("/portfolio")
-def load_portfolio(body: PortfolioSetting):
+def load_portfolio(
+    body: PortfolioSetting,
+    current_user: str = Depends(get_current_user),
+):
     try:
+        reader = reader_manager[current_user]
+
         setting = body.setting
-        portfolio.load_setting(setting)
-        portfolio.save_setting_to_file()
+        reader.portfolio.load_setting(setting)
+        reader.portfolio.save_setting_to_file(version=1)
         return {"message": "Portfolio loaded successfully"}
     except Exception as e:
         raise HTTPException(
@@ -131,11 +156,15 @@ def load_portfolio(body: PortfolioSetting):
 
 
 @app.get("/portfolio/reset")
-def reset_portfolio():
+def reset_portfolio(
+    current_user: str = Depends(get_current_user),
+):
     try:
-        portfolio.load_setting_from_backup_file()
-        portfolio.save_setting_to_file()
-        setting = portfolio.get_setting()
+        reader = reader_manager[current_user]
+
+        reader.portfolio.load_setting_from_file(verison=0)
+        reader.portfolio.save_setting_to_file(version=1)
+        setting = reader.portfolio.get_setting()
         return {
             "message": "Portfolio reset successfully",
             "type": "portfolio",
