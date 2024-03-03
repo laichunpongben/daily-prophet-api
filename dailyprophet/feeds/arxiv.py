@@ -13,25 +13,25 @@ logger = logging.getLogger(__name__)
 
 
 class ArxivFeed(Feed):
-    def __init__(self, category):
+    def __init__(self, subject):
         super().__init__()
-        self.category = category
-        self.feed_url = f"http://export.arxiv.org/rss/{category}"
+        self.subject = subject
+        self.feed_url = f"https://export.arxiv.org/api/query?search_query=all:{subject}&start=0&max_results=50&sortBy=lastUpdatedDate&sortOrder=descending"
         self.cache = None
         self.cache_expiration = None
         self.cache_duration = timedelta(hours=1)
 
-    def parse(self, post):
+    def parse(self, entry):
         return {
             "type": "arxiv",
-            "category": self.category,
-            "id": post.get("id", ""),
-            "title": post.get("title", ""),
-            "summary": post.get("summary", ""),
-            "author": post.get("author", ""),
-            "published": post.get("published", ""),
-            "updated": post.get("updated", ""),
-            "url": post.get("link", ""),
+            "subject": self.subject,
+            "id": entry.get("id", ""),
+            "title": entry.get("title", ""),
+            "summary": entry.get("summary", ""),
+            "author": entry.get("author", ""),
+            "published": entry.get("published", ""),
+            "updated": entry.get("updated", ""),
+            "url": entry.get("link", ""),
         }
 
     async def async_fetch(self, n: int):
@@ -45,22 +45,16 @@ class ArxivFeed(Feed):
                 logger.debug("Fetching from cache")
                 return expo_decay_weighted_sample(self.cache, k=n)
 
-            fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
-
             async with aiohttp.ClientSession() as session:
                 async with session.get(self.feed_url) as response:
-                    data = await response.read()
+                    data = await response.text()
                     feed = feedparser.parse(data)
-                    entries = feed.entries[:fetch_size]
+                    entries = feed.entries[:n]
 
-                    updated_time = feed.feed.updated
-                    published_time = feed.feed.published
                     parsed_entries = [
                         self.parse(
                             {
                                 **entry,
-                                "published": published_time,
-                                "updated": updated_time,
                             }
                         )
                         for entry in entries
