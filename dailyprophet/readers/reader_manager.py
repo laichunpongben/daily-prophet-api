@@ -2,7 +2,8 @@
 
 from typing import List
 import os
-import csv
+
+import pandas as pd
 
 from dailyprophet.readers.reader import Reader
 
@@ -11,7 +12,7 @@ class ReaderManager:
     DEFAULT_USER = "PUBLIC"
 
     def __init__(self):
-        self.csv_path = os.path.join(
+        self.csv_file_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "../data/readers.csv",
         )
@@ -21,15 +22,12 @@ class ReaderManager:
     def load(self):
         reader_names = self.load_reader_names()
         for reader_name in reader_names:
-            self._readers[reader_name] = Reader(reader_name)
+            if reader_name not in self._readers:
+                self._readers[reader_name] = Reader(reader_name)
 
     def load_reader_names(self) -> List[str]:
-        reader_names = []
-        with open(self.csv_path, "r", newline="") as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                reader_names.append(row["name"])
-        return reader_names
+        df = pd.read_csv(self.csv_file_path)
+        return df.name.tolist()
 
     def __getitem__(self, id):
         if id is None:
@@ -37,20 +35,27 @@ class ReaderManager:
         elif id in self._readers:
             return self._readers[id]
         else:
-            return self.create_reader(id)
+            reader = self.create_reader(id)
+            self._readers[id] = reader
+            return reader
 
     def get_default(self):
         return self._readers[ReaderManager.DEFAULT_USER]
 
     def create_reader(self, id: str):
-        with open(self.csv_file_path, "a", newline="") as csvfile:
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow([id])
-        new_reader = Reader(id)
-        self._readers[id] = new_reader
-        return new_reader
-
+        reader_names = self.load_reader_names()
+        if id not in reader_names:
+            reader_names.append(id)
+            df = pd.DataFrame(reader_names, columns=["name"])
+            df.to_csv(self.csv_file_path, index=False)
+        return Reader(id)
 
 if __name__ == "__main__":
     reader_manager = ReaderManager()
+    print(reader_manager._readers)
+
+    r1 = reader_manager["asdf"]
+    print(reader_manager._readers)
+
+    r2 = reader_manager["qwer"]
     print(reader_manager._readers)
