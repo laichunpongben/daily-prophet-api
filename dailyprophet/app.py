@@ -148,7 +148,7 @@ def load_portfolio(
         setting = body.setting
         reader.portfolio.load_setting(setting)
         reader.portfolio.save_setting_to_file(version=1)
-        reader.queue.clear()
+        reader.queue.trim_last(30)
         return {"message": "Portfolio loaded successfully"}
     except Exception as e:
         raise HTTPException(
@@ -165,7 +165,7 @@ def reset_portfolio(
 
         reader.portfolio.load_setting_from_file(verison=0)
         reader.portfolio.save_setting_to_file(version=1)
-        reader.queue.clear()
+        reader.queue.trim_last(30)
         setting = reader.portfolio.get_setting()
         return {
             "message": "Portfolio reset successfully",

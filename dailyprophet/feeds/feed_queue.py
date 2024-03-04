@@ -34,12 +34,7 @@ class FeedQueue:
     def pop(self):
         if self.q:
             feed = self.q.popleft()
-            # Ignore timestamp when removing from the set
-            hashable_feed = tuple(
-                (key, value)
-                for key, value in feed.items()
-                if key != FeedQueue.timestamp_key
-            )
+            hashable_feed = self.create_hashable_feed(feed)
             self.set.remove(hashable_feed)
             return feed
         else:
@@ -49,3 +44,26 @@ class FeedQueue:
         self.q.clear()
         self.set.clear()
         logger.info("Queue cleared.")
+
+    def trim_last(self, n: int):
+        count = 0
+        for _ in range(n):
+            try:
+                feed = self.q.pop()
+                hashable_feed = self.create_hashable_feed(feed)
+                self.set.remove(hashable_feed)
+                count += 1
+            except IndexError:
+                break
+        logger.info(f"Trimmed {count} items in queue.")
+        return count
+
+    def create_hashable_feed(self, feed):
+        """
+        Ignore timestamp when removing from the set
+        """
+        return tuple(
+            (key, value)
+            for key, value in feed.items()
+            if key != FeedQueue.timestamp_key
+        )
