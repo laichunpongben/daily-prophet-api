@@ -2,10 +2,13 @@
 
 from typing import List
 import os
+import logging
 
 import pandas as pd
 
 from dailyprophet.readers.reader import Reader
+
+logger = logging.getLogger(__name__)
 
 
 class ReaderManager:
@@ -29,12 +32,15 @@ class ReaderManager:
         df = pd.read_csv(self.csv_file_path)
         return df.name.tolist()
 
-    def __getitem__(self, id):
+    def __getitem__(self, id: str):
         if id is None:
+            logger.debug("Null reader Id. Use default reader.")
             return self.get_default()
         elif id in self._readers:
+            logger.debug(f"Existing reader {id}")
             return self._readers[id]
         else:
+            logger.debug(f"Create new reader {id}")
             reader = self.create_reader(id)
             self._readers[id] = reader
             return reader
