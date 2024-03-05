@@ -16,6 +16,7 @@ charset-normalizer==3.3.2
 click==8.1.7
 colorlog==6.8.2
 cryptography==42.0.5
+dnspython==2.6.1
 ecdsa==0.18.0
 fastapi==0.110.0
 feedparser==6.0.11
@@ -45,6 +46,7 @@ pyasn1-modules==0.3.0
 pycparser==2.21
 pydantic==2.6.2
 pydantic_core==2.16.3
+pymongo==4.6.2
 pyparsing==3.1.1
 python-dateutil==2.8.2
 python-jose==3.3.0
