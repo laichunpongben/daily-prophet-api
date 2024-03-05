@@ -69,7 +69,7 @@ class TwitterFeed(Feed):
                 access_token=self.access_token,
                 access_token_secret=self.access_token_secret,
             )
-            print("client created")
+            logger.debug("client created")
 
             tweets = client.search_recent_tweets(
                 self.query, max_results=n, user_auth=False

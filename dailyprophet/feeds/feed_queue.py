@@ -58,6 +58,17 @@ class FeedQueue:
         logger.info(f"Trimmed {count} items in queue.")
         return count
 
+    def trim_last_until(self, n: int):
+        count = 0
+        while self.size() > n:
+            feed = self.q.pop()
+            hashable_feed = self.create_hashable_feed(feed)
+            self.set.remove(hashable_feed)
+            count += 1
+        remaining = self.size()
+        logger.info(f"Trimmed {count} items in queue. Remaining {remaining} items.")
+        return count
+
     def create_hashable_feed(self, feed):
         """
         Ignore timestamp when removing from the set

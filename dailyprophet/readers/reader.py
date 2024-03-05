@@ -4,7 +4,7 @@ from random import choices, shuffle
 from collections import Counter
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import List
+from typing import List, Optional
 import logging
 
 from dailyprophet.feeds.portfolio import FeedPortfolio
@@ -15,9 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class Reader:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, record: Optional[dict] = None) -> None:
         self.name = name
-        self.portfolio = FeedPortfolio(name)
+
+        if record is not None:
+            setting = record.get("portfolio")
+        else:
+            setting = None
+        self.portfolio = FeedPortfolio(name, setting)
+
         self.queue = FeedQueue()
         self.factory = FeedFactory()
 

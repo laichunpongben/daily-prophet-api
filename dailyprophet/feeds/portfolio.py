@@ -3,7 +3,7 @@
 import os
 import json
 
-from typing import List
+from typing import List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,34 +15,45 @@ class FeedPortfolio:
         ["youtube", "UCqECaJ8Gagnn7YCbPEzWH6g", 0.4],
         ["openweathermap", "Hong Kong", 0.2],
     ]
+    DEFAULT_USER = "PUBLIC"
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, setting: Optional[List] = None) -> None:
         self.name = name
         self._portfolio = {}
-        try:
-            self.load_setting_from_file(verison=1)  # eager
-        except FileNotFoundError:
-            self.save_setting_to_file(version=0)
-            self.save_setting_to_file(version=1)
-            self.load_setting_from_file(verison=1)
 
-    def format_setting_file_path(self, version: int = 0):
+        if setting is not None:
+            logger.debug(f"Portfolio setting provided by {name}.")
+            self.add_setting(setting)
+        else:
+            logger.warning(
+                f"No portfolio setting provided by {name}. Loading from default."
+            )
+            self.load_default()
+
+    def _format_setting_file_path(self, name, version: int = 0):
         assert version is not None
+        assert name is not None
         return os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            f"../data/portfolio_{self.name}_{version}.json",
+            f"../data/portfolio_{name}_{version}.json",
         )
+
+    def _load_setting_from_file(self, name, verison: int = 1):
+        self._portfolio = {}
+        with open(self._format_setting_file_path(name, version=verison), "r") as f:
+            setting = json.load(f)
+            self.add_setting(setting)
+
+    def load_default(self):
+        self._load_setting_from_file(FeedPortfolio.DEFAULT_USER, verison=0)
+
+    def add_setting(self, setting: List):
+        for feed_type, name, weight in setting:
+            self.add(feed_type, name, weight)
 
     def add(self, feed_type: str, name: str, weight: float):
         key = f"{feed_type}/{name}"
         self._portfolio[key] = float(weight)
-
-    def load_setting_from_file(self, verison: int = 1):
-        self._portfolio = {}
-        with open(self.format_setting_file_path(version=verison), "r") as f:
-            setting = json.load(f)
-            for feed_type, name, weight in setting:
-                self.add(feed_type, name, weight)
 
     def load_setting(self, setting: List):
         self._portfolio = {}
@@ -56,13 +67,6 @@ class FeedPortfolio:
             line = [feed_type, name, weight]
             setting.append(line)
         return setting
-
-    def save_setting_to_file(self, version: int = 1):
-        setting = self.get_setting()
-        if len(setting) == 0:
-            setting = FeedPortfolio.DEFAULT_SETTING
-        with open(self.format_setting_file_path(version=version), "w") as f:
-            json.dump(setting, f)
 
     def generate_key_weight(self):
         for key, weight in self._portfolio.items():

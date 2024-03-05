@@ -1,3 +1,13 @@
+"""
+Consider doing this instead: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
+try:
+    idinfo = id_token.verify_oauth2_token(token, requests.Request(), CLIENT_ID)
+"""
+
 import logging
 
 from fastapi import Depends, HTTPException, status
@@ -44,6 +54,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         logger.error(e)
         return None
     return user
+
 
 if __name__ == "__main__":
     from dailyprophet.configs import TEST_BEARER_TOKEN

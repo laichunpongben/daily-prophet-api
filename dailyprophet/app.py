@@ -138,7 +138,7 @@ def show_portfolio(
 
 
 @app.post("/portfolio")
-def load_portfolio(
+def update_portfolio(
     body: PortfolioSetting,
     current_user: str = Depends(get_current_user),
 ):
@@ -147,8 +147,9 @@ def load_portfolio(
 
         setting = body.setting
         reader.portfolio.load_setting(setting)
-        reader.portfolio.save_setting_to_file(version=1)
-        reader.queue.trim_last(30)
+
+        reader_manager.sync()
+        reader.queue.trim_last_until(10)
         return {"message": "Portfolio loaded successfully"}
     except Exception as e:
         raise HTTPException(
@@ -163,10 +164,12 @@ def reset_portfolio(
     try:
         reader = reader_manager[current_user]
 
-        reader.portfolio.load_setting_from_file(verison=0)
-        reader.portfolio.save_setting_to_file(version=1)
-        reader.queue.trim_last(30)
+        reader.portfolio.load_default()
         setting = reader.portfolio.get_setting()
+
+        reader_manager.sync()
+        reader.queue.trim_last_until(10)
+
         return {
             "message": "Portfolio reset successfully",
             "type": "portfolio",

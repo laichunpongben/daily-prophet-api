@@ -1,36 +1,41 @@
 # readers/reader_manager.py
 
 from typing import List
-import os
 import logging
 
-import pandas as pd
-
 from dailyprophet.readers.reader import Reader
+from dailyprophet.mongodb_service import MongoDBService
 
 logger = logging.getLogger(__name__)
 
 
 class ReaderManager:
     DEFAULT_USER = "PUBLIC"
+    KEY_FIELD = "userId"
 
     def __init__(self):
-        self.csv_file_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "../data/readers.csv",
-        )
         self._readers = {}
+        self.db = MongoDBService()
         self.load()
 
     def load(self):
-        reader_names = self.load_reader_names()
-        for reader_name in reader_names:
-            if reader_name not in self._readers:
-                self._readers[reader_name] = Reader(reader_name)
+        key_field = ReaderManager.KEY_FIELD
+        default_user = ReaderManager.DEFAULT_USER
+        try:
+            reader_records = self.db.read_all()
+        except Exception as e:
+            logger.error(e)
+            logger.error("Failed to load DB reader records!!!")
+            reader_records = [
+                {
+                    key_field: default_user,
+                }
+            ]
 
-    def load_reader_names(self) -> List[str]:
-        df = pd.read_csv(self.csv_file_path)
-        return df.name.tolist()
+        for record in reader_records:
+            reader_name = record[key_field]
+            if reader_name not in self._readers:
+                self._readers[reader_name] = Reader(reader_name, record=record)
 
     def __getitem__(self, id: str):
         if id is None:
@@ -42,26 +47,49 @@ class ReaderManager:
         else:
             logger.debug(f"Create new reader {id}")
             reader = self.create_reader(id)
-            self._readers[id] = reader
             return reader
 
     def get_default(self):
         return self._readers[ReaderManager.DEFAULT_USER]
 
     def create_reader(self, id: str):
-        reader_names = self.load_reader_names()
-        if id not in reader_names:
-            reader_names.append(id)
-            df = pd.DataFrame(reader_names, columns=["name"])
-            df.to_csv(self.csv_file_path, index=False)
-        return Reader(id)
+        key_field = ReaderManager.KEY_FIELD
+        new_reader = Reader(id, record=None)
+        self._readers[id] = new_reader  # in-memory
+
+        portfolio = new_reader.portfolio.get_setting()
+        record = {key_field: id, "portfolio": portfolio}
+
+        self.db.save(id, record, key_field=key_field)  # persist
+        return new_reader
+
+    def serialize(self):
+        reader_dict = {}
+        for name, reader in self._readers.items():
+            portfolio = reader.portfolio.get_setting()
+            new_item = {"userId": name, "portfolio": portfolio}
+            reader_dict[name] = new_item
+        return reader_dict
+
+    def sync(self):
+        key_field = ReaderManager.KEY_FIELD
+
+        reader_dict = self.serialize()
+        for id, record in reader_dict.items():
+            self.db.save(id, record, key_field=key_field)  # persist
+        logger.info("Reader Manager sync done!")
+
 
 if __name__ == "__main__":
-    reader_manager = ReaderManager()
-    print(reader_manager._readers)
+    rm = ReaderManager()
+    print(rm._readers)
 
-    r1 = reader_manager["asdf"]
-    print(reader_manager._readers)
+    r1 = rm["TEST1"]
+    r2 = rm["TEST2"]
+    r3 = rm["TEST3"]
+    r4 = rm["TEST4"]
+    print(rm._readers)
 
-    r2 = reader_manager["qwer"]
-    print(reader_manager._readers)
+    reader_dict = rm.serialize()
+    print(reader_dict)
+    rm.sync()
