@@ -7,6 +7,7 @@ from dailyprophet.feeds.reddit import RedditFeed
 from dailyprophet.feeds.arxiv import ArxivFeed
 from dailyprophet.feeds.youtube import YoutubeFeed
 from dailyprophet.feeds.openweathermap import OpenWeatherMapFeed
+from dailyprophet.feeds.lihkg import LihkgFeed
 
 
 class FeedFactory:
@@ -17,6 +18,7 @@ class FeedFactory:
         "arxiv": ArxivFeed,
         "youtube": YoutubeFeed,
         "openweathermap": OpenWeatherMapFeed,
+        "lihkg": LihkgFeed,
     }
 
     def __new__(cls):
