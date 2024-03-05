@@ -25,6 +25,7 @@ class LihkgFeed(Feed):
     def parse(self, item):
         id = item["thread_id"]
         return {
+            "type": "lihkg",
             "id": id,
             "title": item["title"],
             "user_id": item["user"]["user_id"],
