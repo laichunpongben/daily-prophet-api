@@ -26,6 +26,7 @@ class LihkgFeed(Feed):
         id = item["thread_id"]
         return {
             "type": "lihkg",
+            "category": self.cat_id,
             "id": id,
             "title": item["title"],
             "user_id": item["user"]["user_id"],
