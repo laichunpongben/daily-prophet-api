@@ -2,6 +2,7 @@
     ["reddit", "programming", 0.1],
     ["arxiv", "cs.LG", 0.1],
     ["youtube", "UCqECaJ8Gagnn7YCbPEzWH6g", 0.1],
+    ["youtube", "Taylor Swift", 0.1],
     ["openweathermap", "Hong Kong", 0.02],
     ["openweathermap", "Singapore", 0.02],
     ["openweathermap", "Dubai", 0.02]
