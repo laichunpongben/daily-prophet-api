@@ -73,7 +73,7 @@ class LihkgFeed(Feed):
                 logger.debug("Fetching from cache")
                 return expo_decay_weighted_sample(self.cache, k=n)
 
-            fetch_size = ceil(n / 50) * 50  # keep a cache with size of multiple of 50
+            fetch_size = ceil(n / 30) * 30  # keep a cache with size of multiple of 30
             items = await self.async_fetch_search(fetch_size)
             parsed_items = [self.parse(item) for item in items]
 
@@ -113,6 +113,7 @@ class LihkgFeed(Feed):
 
 
 if __name__ == "__main__":
-    lihkg = LihkgFeed("23%E6%A2%9D")
+    # lihkg = LihkgFeed("23%E6%A2%9D")
+    lihkg = LihkgFeed("sex")
     out = lihkg.fetch(50)
     print(out)

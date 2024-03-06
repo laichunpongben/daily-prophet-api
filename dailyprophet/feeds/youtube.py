@@ -118,7 +118,7 @@ class YoutubeFeed(Feed):
                 self.async_fetch_channel if is_channel else self.async_fetch_q
             )
             items = await self.async_retry_operation(
-                fetch_operation, fetch_size=ceil(n / 50) * 50
+                fetch_operation, fetch_size=ceil(n / 50) * 50  # same quota cost for <= 50
             )
 
             parsed_items = [self.parse(item) for item in items]
