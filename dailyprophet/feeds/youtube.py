@@ -25,9 +25,10 @@ class YoutubeFeed(Feed):
         ]
         self.active_api_key_index = 0
         self.q = q
-        self.cache = None
+        self.cache = []
         self.cache_expiration = None
         self.cache_duration = timedelta(hours=1)
+        self.fetch_lock = asyncio.Lock()
 
     def switch_active_api_key(self):
         self.active_api_key_index = (self.active_api_key_index + 1) % len(self.api_keys)
@@ -108,23 +109,33 @@ class YoutubeFeed(Feed):
         return await self.async_fetch_url(url)
 
     async def async_fetch(self, n: int):
+        valid_cache = await self._check_cache()
         try:
-            if self.cache_valid(n):
-                logger.debug("Fetching from cache")
-                return expo_decay_weighted_sample(self.cache, k=n)
+            # attempt to fill the cache if no other coroutine already does
+            is_locked = self.fetch_lock.locked()
+            if n > len(valid_cache) and not is_locked:
+                # Acquire the lock before scheduling the background task
+                logger.info("Attempt to fill cache")
+                async with self.fetch_lock:
+                    logger.info("LOCK acquired")
+                    is_channel = await self.async_retry_operation(
+                        self.async_verify_channel
+                    )
+                    fetch_operation = (
+                        self.async_fetch_channel if is_channel else self.async_fetch_q
+                    )
+                    items = await self.async_retry_operation(
+                        fetch_operation,
+                        fetch_size=ceil(n / 50) * 50,  # same quota cost for <= 50
+                    )
+                    parsed_items = [self.parse(item) for item in items]
 
-            is_channel = await self.async_retry_operation(self.async_verify_channel)
-            fetch_operation = (
-                self.async_fetch_channel if is_channel else self.async_fetch_q
-            )
-            items = await self.async_retry_operation(
-                fetch_operation, fetch_size=ceil(n / 50) * 50  # same quota cost for <= 50
-            )
+                    self.update_cache(parsed_items)
+                    await asyncio.sleep(0.1)  # keep the lock longer
 
-            parsed_items = [self.parse(item) for item in items]
-
-            self.update_cache(parsed_items)
-            return expo_decay_weighted_sample(self.cache, k=n)
+                    return expo_decay_weighted_sample(self.cache, k=n)
+            else:
+                return expo_decay_weighted_sample(valid_cache, k=n)
         except Exception as e:
             logger.error(f"Error fetching YouTube feed asynchronously: {e}")
             return []
@@ -141,12 +152,12 @@ class YoutubeFeed(Feed):
             "url": f"https://www.youtube.com/watch?v={id}",
         }
 
-    def cache_valid(self, n: int):
-        return (
-            self.cache is not None
-            and datetime.now() < self.cache_expiration
-            and n <= len(self.cache)
-        )
+    async def _check_cache(self):
+        logger.debug("Checking cache")
+        if self.cache_expiration is not None and datetime.now() < self.cache_expiration:
+            return self.cache
+        else:
+            return []
 
     def update_cache(self, parsed_items):
         self.cache = parsed_items
@@ -158,21 +169,43 @@ class YoutubeFeed(Feed):
         return asyncio.run(self.async_fetch(n))
 
 
-if __name__ == "__main__":
-    youtube = YoutubeFeed("UCQHX6ViZmPsWiYSFAyS0a3Q")
-    print(youtube.fetch(50))
+async def test_async_fetch():
+    import json
 
+    # youtube = YoutubeFeed("UCQHX6ViZmPsWiYSFAyS0a3Q")
+    youtube = YoutubeFeed("UCu_YquoQYKR3GpP82TO-zRw")
     # youtube = YoutubeFeed("Taylor Swift")
-    # print(youtube.retry_fetch_q(50))
-    # print(youtube.fetch(50))
 
-    # youtube = YoutubeFeed("UCQHX6ViZmPsWiYSFAyS0a3Q")
-    # youtube2 = YoutubeFeed("UCu_YquoQYKR3GpP82TO-zRw")
-    # out = youtube.fetch(2)
-    # print(out)
-    # out = youtube.fetch(2)
-    # print(out)
+    fetch_size = 50
 
-    # youtube = YoutubeFeed("UCQHX6ViZmPsWiYSFAyS0a3Q")
-    # print(youtube.retry_verify_channel())
-    # print(youtube.retry_fetch_channel(50))
+    fetch_task1 = asyncio.create_task(youtube.async_fetch(fetch_size))
+    fetch_task2 = asyncio.create_task(youtube.async_fetch(fetch_size))
+    sleep_task = asyncio.create_task(asyncio.sleep(2))
+
+    # Explicitly wait for the background task and the main task to complete
+    out, _, _ = await asyncio.gather(fetch_task1, fetch_task2, sleep_task)
+
+    print("Returned from async_fetch:")
+    print("size: ", len(out))
+
+    fetch_task3 = asyncio.create_task(youtube.async_fetch(fetch_size))
+    out = await fetch_task3
+
+    print("Returned from async_fetch:")
+    print(json.dumps(out, indent=2))
+    print("size: ", len(out))
+
+
+if __name__ == "__main__":
+    import time
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.DEBUG)
+
+    start = time.time()
+    asyncio.run(test_async_fetch())
+    end = time.time()
+    lapsed = end - start
+    print("Lapsed: ", lapsed)

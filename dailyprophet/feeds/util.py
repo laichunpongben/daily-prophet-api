@@ -3,8 +3,11 @@ from typing import List
 
 
 def expo_decay_weighted_sample(data: List, k: int, decaying_factor: float = 0.98):
-    weights = [decaying_factor**i for i in range(len(data))]
-    return random.choices(data, weights=weights, k=k)
+    if k >= len(data):
+        return data
+    else:
+        weights = [decaying_factor**i for i in range(len(data))]
+        return random.choices(data, weights=weights, k=k)
 
 
 def flatten_dict(d, parent_key="", sep="_"):
@@ -31,3 +34,10 @@ def flatten_dict(d, parent_key="", sep="_"):
             items.append((new_key, v))
 
     return dict(items)
+
+
+if __name__ == "__main__":
+    data = [1, 2, 3]
+    k = 5
+    out = expo_decay_weighted_sample(data, k=k)
+    print(out)
