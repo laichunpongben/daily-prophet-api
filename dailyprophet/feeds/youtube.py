@@ -45,8 +45,8 @@ class YoutubeFeed(Feed):
             async with aiohttp.ClientSession() as session:
                 logger.debug(f"Fetching: {url}")
                 async with session.get(url) as response:
-                    data = await response.json()
                     if response.ok:
+                        data = await response.json()
                         return data.get("items", [])
                     else:
                         response.raise_for_status()

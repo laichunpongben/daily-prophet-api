@@ -69,7 +69,9 @@ class RedditFeed(Feed):
             }
 
     async def async_fetch_submission(self, submission):
+        logger.debug("REDDIT: async_fetch_submission")
         await submission.load()  # Fetch the submission before accessing comments
+        logger.debug("REDDIT: submission loaded")
         post_text = submission.selftext
         comments = []
 
@@ -80,7 +82,9 @@ class RedditFeed(Feed):
                 count += 1
 
         async def fetch_comment(comment):
+            logger.debug("REDDIT: fetch_comment")
             await comment.load()  # Fetch each comment before accessing its properties
+            logger.debug("REDDIT: comment loaded")
             return {
                 "id": comment.id,
                 "author": comment.author.name if comment.author is not None else None,
@@ -131,13 +135,15 @@ class RedditFeed(Feed):
             async with ClientSession() as session:
                 client = self.create_client(session)
                 subreddit = await client.subreddit(self.community)
-                logger.debug("reddit session started")
+                logger.debug("REDDIT: session started")
 
                 while len(parsed_submissions) < fetch_size:
+                    logger.debug("REDDIT: while loop")
                     params = {"after": last_seen_id} if last_seen_id else {}
                     async for submission in subreddit.hot(
                         limit=fetch_size * scaling, params=params
                     ):
+                        logger.debug("REDDIT: Browsing submission")
                         if submission.ups >= min_ups:
                             post_text, comments = await self.async_fetch_submission(
                                 submission
