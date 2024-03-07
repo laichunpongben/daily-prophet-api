@@ -37,7 +37,7 @@ class RedditFeed(Feed):
         return asyncpraw.Reddit(
             client_id=REDDIT_CLIENT_ID,
             client_secret=REDDIT_CLEINT_SECRET,
-            user_agent="daily-prophet/0.0.1",
+            user_agent="daily-prophet/0.4.3",
             requestor_kwargs={"session": session},
         )
 
@@ -119,7 +119,7 @@ class RedditFeed(Feed):
         Update the cache in the background until it reaches the target size.
         """
         try:
-            logger.info(f"Background task _update_cache_background started")
+            logger.info(f"REDDIT: Background task _update_cache_background started")
 
             now = datetime.now()
             fetch_size = max(
@@ -136,48 +136,53 @@ class RedditFeed(Feed):
                 client = self.create_client(session)
                 subreddit = await client.subreddit(self.community)
                 logger.debug("REDDIT: session started")
+                logger.debug(f"REDDIT: subreddit {subreddit}")
 
-                while len(parsed_submissions) < fetch_size:
-                    logger.debug("REDDIT: while loop")
-                    params = {"after": last_seen_id} if last_seen_id else {}
-                    async for submission in subreddit.hot(
-                        limit=fetch_size * scaling, params=params
-                    ):
-                        logger.debug("REDDIT: Browsing submission")
-                        if submission.ups >= min_ups:
-                            post_text, comments = await self.async_fetch_submission(
-                                submission
-                            )
-
-                            bodies = [submission.title, post_text] + [
-                                comment["body"] for comment in comments
-                            ]
-                            text = " ".join(bodies)
-
-                            summary = await async_summarize_discussion(text)
-                            logger.debug(summary)
-
-                            parsed_submission = self.parse(submission, text, summary)
-                            expiration_time = now + self.cache_duration
-                            self.cache.append(
-                                CachedItem(
-                                    data=parsed_submission, expiration=expiration_time
+                async with asyncio.timeout(60):
+                    while len(parsed_submissions) < fetch_size:
+                        logger.debug("REDDIT: while loop")
+                        logger.debug(f"REDDIT: len parsed {len(parsed_submissions)}")
+                        params = {"after": last_seen_id} if last_seen_id else {}
+                        async for submission in subreddit.hot(
+                            limit=fetch_size * scaling, params=params
+                        ):
+                            logger.debug("REDDIT: Browsing submission")
+                            if submission.ups >= min_ups:
+                                post_text, comments = await self.async_fetch_submission(
+                                    submission
                                 )
-                            )
-                            parsed_submissions.append(parsed_submission)
 
-                        last_seen_id = submission.name
+                                bodies = [submission.title, post_text] + [
+                                    comment["body"] for comment in comments
+                                ]
+                                text = " ".join(bodies)
 
-                    scaling *= 2
+                                summary = await async_summarize_discussion(text)
+                                logger.debug(summary)
+
+                                parsed_submission = self.parse(submission, text, summary)
+                                expiration_time = now + self.cache_duration
+                                self.cache.append(
+                                    CachedItem(
+                                        data=parsed_submission, expiration=expiration_time
+                                    )
+                                )
+                                parsed_submissions.append(parsed_submission)
+
+                            last_seen_id = submission.name
+
+                        scaling *= 2
 
             # Cleanup: Remove expired CachedItems from the cache
             self.cache = [
                 item for item in self.cache if item.expiration > datetime.now()
             ]
 
-            logger.info(f"Background task _update_cache_background completed")
+            logger.info(f"REDDIT: Background task _update_cache_background completed")
+        except asyncio.TimeoutError:
+            logger.error("REDDIT: Timeout occurred in the while loop") 
         except Exception as e:
-            logger.error(f"Error in background task _update_cache_background: {e}")
+            logger.error(f"REDDIT: Error in background task _update_cache_background: {e}")
         finally:
             # Remove the attribute after the background task is done
             if hasattr(self, "_update_cache_task"):
@@ -195,9 +200,11 @@ class RedditFeed(Feed):
                 async with self.fetch_lock:
                     logger.info("LOCK acquired")
 
-                    target_cache_size = (
-                        ceil(n / 30) * 30
-                    )  # keep a cache with a size of multiple of 30
+                    # target_cache_size = (
+                    #     ceil(n / 30) * 30
+                    # )  # keep a cache with a size of multiple of 30
+
+                    target_cache_size = 1  # testing
 
                     # Check if the background task has already been scheduled
                     if not hasattr(self, "_update_cache_task"):
@@ -210,7 +217,7 @@ class RedditFeed(Feed):
                         self._update_cache_task = asyncio.ensure_future(
                             self._update_cache_background(target_cache_size)
                         )
-                    await asyncio.sleep(0.1)  # keep the lock longer
+                    await asyncio.sleep(1)  # keep the lock longer
 
             return expo_decay_weighted_sample(valid_cache, k=n)
         except Exception as e:
@@ -246,9 +253,9 @@ if __name__ == "__main__":
     import time
 
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
     logger.addHandler(console_handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     start = time.time()
     asyncio.run(test_async_fetch())
