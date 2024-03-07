@@ -15,7 +15,7 @@ class ReaderManager:
 
     def __init__(self):
         self._readers = {}
-        self.db = MongoDBService()
+        self.db = MongoDBService("readers")
         self.load()
 
     def load(self):

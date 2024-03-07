@@ -138,7 +138,7 @@ class LihkgFeed(Feed):
         url = f"{LihkgFeed.THREAD_BASE_URL}/{thread_id}"
         flattened_item = flatten_dict(item)
         return {
-            "type": "lihkg",
+            "source": "lihkg",
             "q": self.q,
             "url": url,
             **flattened_item,

@@ -107,7 +107,7 @@ class LinkedinJobFeed(Feed):
     def parse_job(self, job):
         # Parse the job data and return a standardized format
         return {
-            "type": "linkedin_job",
+            "source": "linkedin_job",
             "title": job.get("title", ""),
             "company": job.get("company", ""),
             "location": job.get("location", ""),

@@ -31,7 +31,7 @@ class LichessPuzzleFeed(Feed):
     def parse(self, puzzle):
         id = puzzle["puzzle"]["id"]
         return {
-            "type": "lichess",
+            "source": "lichess",
             "id": id,
             "rating": puzzle["puzzle"]["rating"],
             "url": f"https://lichess.org/training/{id}",

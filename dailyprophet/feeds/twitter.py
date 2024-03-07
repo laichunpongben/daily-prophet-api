@@ -45,7 +45,7 @@ class TwitterFeed(Feed):
         }
         """
         return {
-            "type": "twitter",
+            "source": "twitter",
             "id": tweet["id"],
             "text": tweet["text"],
             "user": tweet["user"]["screen_name"],

@@ -59,7 +59,7 @@ class OpenWeatherMapFeed(Feed):
         weather_description = weather_data.get("weather", [{}])[0].get("description")
 
         return {
-            "type": "openweathermap",
+            "source": "openweathermap",
             "city": city_name,
             "temperature": temperature,
             "feels_like": feels_like,
@@ -73,7 +73,7 @@ class OpenWeatherMapFeed(Feed):
             if "temp" in key and isinstance(value, (int, float)):
                 flattened_dict[key] = self.correct_temperature(value)
 
-        return {"type": "openweathermap", **flattened_dict}
+        return {"source": "openweathermap", **flattened_dict}
 
     def correct_temperature(self, temp_kelvin):
         # Helper function to correct temperature from Kelvin to Celsius

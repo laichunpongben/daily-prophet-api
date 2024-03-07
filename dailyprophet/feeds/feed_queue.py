@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import List
 import logging
 
+from .util import flatten_dict
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,7 @@ class FeedQueue:
             feed_with_timestamp = {FeedQueue.timestamp_key: current_timestamp, **feed}
 
             # Ignore timestamp when checking for uniqueness
-            hashable_feed = tuple(feed.items())
+            hashable_feed = self.create_hashable_feed(feed)
             if hashable_feed not in self.set:
                 self.q.append(feed_with_timestamp)
                 self.set.add(hashable_feed)
@@ -73,8 +75,11 @@ class FeedQueue:
         """
         Ignore timestamp when removing from the set
         """
+        if "_id" in feed:
+            feed.pop("_id")
+        flattened_feed = flatten_dict(feed)
         return tuple(
             (key, value)
-            for key, value in feed.items()
+            for key, value in flattened_feed.items()
             if key != FeedQueue.timestamp_key
         )

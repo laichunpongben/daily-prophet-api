@@ -8,11 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class MongoDBService:
-    def __init__(self):
+    def __init__(self, collection: str):
         self.uri = f"mongodb+srv://{MONGODB_USER}:{MONGODB_PASSWORD}@{MONGODB_CLUSTER}/?retryWrites=true&w=majority"
         self.client = MongoClient(self.uri)
         self.db_name = "dailyprophet"
-        self.collection_name = "readers"
+        self.collection_name = collection
 
     def connect(self):
         try:
@@ -89,31 +89,44 @@ class MongoDBService:
         samples = list(collection.aggregate([{"$sample": {"size": num_records}}]))
 
         return samples
+    
+    def query(self, criteria: dict):
+        database = self.client[self.db_name]
+        collection = database[self.collection_name]
+        return list(collection.find(criteria))
 
 
 if __name__ == "__main__":
-    db = MongoDBService()
+    # db = MongoDBService("readers")
 
-    new_record = {
-        "userId": "PUBLIC",
-        "portfolio": [
-            ["reddit", "programming", 0.1],
-            ["arxiv", "cs.LG", 0.1],
-            ["youtube", "UCqECaJ8Gagnn7YCbPEzWH6g", 0.1],
-            ["openweathermap", "Hong Kong", 0.02],
-            ["openweathermap", "Singapore", 0.02],
-            ["openweathermap", "Dubai", 0.02],
-        ],
-    }
+    # new_record = {
+    #     "userId": "PUBLIC",
+    #     "portfolio": [
+    #         ["reddit", "programming", 0.1],
+    #         ["arxiv", "cs.LG", 0.1],
+    #         ["youtube", "UCqECaJ8Gagnn7YCbPEzWH6g", 0.1],
+    #         ["openweathermap", "Hong Kong", 0.02],
+    #         ["openweathermap", "Singapore", 0.02],
+    #         ["openweathermap", "Dubai", 0.02],
+    #     ],
+    # }
 
-    # db.insert(new_record)
-    db.save("PUBLIC", new_record, key_field="userId")
+    # # db.insert(new_record)
+    # db.save("PUBLIC", new_record, key_field="userId")
 
-    # records = db.read_all()
-    # print(records)
+    # # records = db.read_all()
+    # # print(records)
 
-    r1 = db.read("ben", key_field="userId")
-    print(r1)
+    # r1 = db.read("ben", key_field="userId")
+    # print(r1)
 
-    r2 = db.read("PUBLIC", key_field="userId")
-    print(r2)
+    # r2 = db.read("PUBLIC", key_field="userId")
+    # print(r2)
+
+    from datetime import datetime
+
+    db = MongoDBService("feeds")
+    criteria = {"source": "reddit", "subject": "sex", "expire_time": {"$gte": int(datetime.utcnow().timestamp())}}
+    records = db.query(criteria)
+    print(records)
+    print(len(records))

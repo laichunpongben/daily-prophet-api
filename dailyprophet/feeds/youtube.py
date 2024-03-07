@@ -143,7 +143,7 @@ class YoutubeFeed(Feed):
     def parse(self, video: dict):
         id = video["id"]["videoId"]
         return {
-            "type": "youtube",
+            "source": "youtube",
             "channel": video["snippet"]["channelTitle"],
             "id": id,
             "title": video["snippet"]["title"],

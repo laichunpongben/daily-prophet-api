@@ -35,7 +35,7 @@ class FoursquareFeed(Feed):
         'formatted_address': '14 rue des Carmes (Rue des Écoles), 75005 Paris', 'locality': 'Paris', 'postcode': '75005', 'region': 'Île-de-France'}, 'name': 'Nuage Café', 'related_places': {}, 'timezone': 'Europe/Paris'}]}
         """
         return {
-            "type": "foursquare",
+            "source": "foursquare",
             "name": place.get("name", "No Name"),
             "id": place.get("fsq_id", ""),
             "address": place.get("location", {}).get("formatted_address", "No Address"),

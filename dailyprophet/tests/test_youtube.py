@@ -14,7 +14,7 @@ class TestYoutubeFeed(unittest.IsolatedAsyncioTestCase):
         self.n = 5
         self.expected_result = [
             {
-                "type": "youtube",
+                "source": "youtube",
                 "channel": "GothamChess",
                 "id": "KjqpLdO3_CU",
                 "title": "HOW TO WIN AT CHESS!!!!!!!",

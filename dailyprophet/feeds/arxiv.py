@@ -23,7 +23,7 @@ class ArxivFeed(Feed):
 
     def parse(self, entry):
         return {
-            "type": "arxiv",
+            "source": "arxiv",
             "subject": self.subject,
             "id": entry.get("id", ""),
             "title": entry.get("title", ""),

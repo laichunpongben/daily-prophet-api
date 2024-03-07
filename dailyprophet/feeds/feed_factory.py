@@ -37,13 +37,13 @@ class FeedFactory:
 
     def create_feed(self, key: str):
         map = FeedFactory.FEED_CLASS_MAPS
-        type, name = key.split("/")
-        if type in map:
-            feed_class = map[type]
+        source, name = key.split("/")
+        if source in map:
+            feed_class = map[source]
             feed_instance = self._create_feed_instance(feed_class, name)
             return feed_instance
         else:
-            raise ValueError(f"Invalid feed type: {type}")
+            raise ValueError(f"Invalid feed source: {source}")
 
     def _create_feed_instance(self, feed_class: Feed, name: str):
         if name is None or name == "":
