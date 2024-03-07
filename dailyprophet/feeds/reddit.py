@@ -3,6 +3,7 @@ import logging
 import asyncio
 from datetime import datetime, timedelta
 from math import ceil
+import re
 
 import aiohttp
 from aiohttp import ClientSession, ClientResponseError
@@ -29,10 +30,15 @@ class RedditFeed(Feed):
         If the cache is not enough, initiate background fetching to fill the gap.
         """
         logger.debug("Checking cache")
-        criteria = {"source": "reddit", "subject": self.subject, "expire_time": {"$gte": int(datetime.utcnow().timestamp())}}
+        subject_re = re.compile(self.subject.lower().strip(), re.I)
+        criteria = {
+            "source": "reddit",
+            "subject": subject_re,
+            "expire_time": {"$gte": int(datetime.utcnow().timestamp())},
+        }
         valid_cache = db.query(criteria)
         return valid_cache
-    
+
     async def async_worker_fetch(self, n: int):
         url = f"{WORKER_URL}/reddit/{self.subject}/{n}"
         _ = await self.async_fetch_url(url)
@@ -51,7 +57,7 @@ class RedditFeed(Feed):
         except Exception as e:
             logger.error(e)
             return {}
-   
+
     async def async_fetch(self, n: int):
         try:
             valid_cache = await self._check_cache()
@@ -69,8 +75,11 @@ class RedditFeed(Feed):
                     )  # keep a cache with a size of multiple of 30
                     asyncio.ensure_future(self.async_worker_fetch(target_cache_size))
                     await asyncio.sleep(1)  # keep the lock longer
-                
-            return expo_decay_weighted_sample(valid_cache, k=n)
+
+            sort_key = lambda x: x["ups"] + x["downs"] + x["num_comments"] * 2
+            return expo_decay_weighted_sample(
+                sorted(valid_cache, key=sort_key, reverse=True), k=n
+            )
         except Exception as e:
             logger.error(f"Error fetching Reddit posts asynchronously: {e}")
             return []
@@ -79,7 +88,8 @@ class RedditFeed(Feed):
 async def test_async_fetch():
     import json
 
-    reddit = RedditFeed("programming")
+    # reddit = RedditFeed("programming")
+    reddit = RedditFeed("singapore dating")
     fetch_size = 1
 
     # Run the async_fetch method and capture the background task
@@ -91,12 +101,18 @@ async def test_async_fetch():
     out, _, _ = await asyncio.gather(fetch_task1, fetch_task2, sleep_task)
 
     print("Returned from async_fetch:")
+    for item in out:
+        if "_id" in item:
+            item.pop("_id")
     print(json.dumps(out, indent=2))
 
     fetch_task3 = asyncio.create_task(reddit.async_fetch(fetch_size))
     out = await fetch_task3
 
     print("Returned from async_fetch:")
+    for item in out:
+        if "_id" in item:
+            item.pop("_id")
     print(json.dumps(out, indent=2))
 
 

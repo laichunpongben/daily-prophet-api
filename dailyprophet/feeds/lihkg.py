@@ -119,7 +119,12 @@ class LihkgFeed(Feed):
                     items = await self.async_fetch_search(fetch_size)
                     parsed_items = []
                     for item in items:
-                        thumb_count = item["like_count"] + item["dislike_count"] + item["reply_like_count"] + item["reply_like_count"]
+                        thumb_count = (
+                            item["like_count"]
+                            + item["dislike_count"]
+                            + item["reply_like_count"]
+                            + item["reply_like_count"]
+                        )
                         if thumb_count >= LihkgFeed.MIN_THUMBS:
                             parsed_items.append(self.parse(item))
 

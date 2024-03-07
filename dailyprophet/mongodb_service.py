@@ -89,7 +89,7 @@ class MongoDBService:
         samples = list(collection.aggregate([{"$sample": {"size": num_records}}]))
 
         return samples
-    
+
     def query(self, criteria: dict):
         database = self.client[self.db_name]
         collection = database[self.collection_name]
@@ -126,7 +126,11 @@ if __name__ == "__main__":
     from datetime import datetime
 
     db = MongoDBService("feeds")
-    criteria = {"source": "reddit", "subject": "sex", "expire_time": {"$gte": int(datetime.utcnow().timestamp())}}
+    criteria = {
+        "source": "reddit",
+        "subject": "sex",
+        "expire_time": {"$gte": int(datetime.utcnow().timestamp())},
+    }
     records = db.query(criteria)
     print(records)
     print(len(records))
