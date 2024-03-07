@@ -138,7 +138,7 @@ class RedditFeed(Feed):
                 logger.debug("REDDIT: session started")
                 logger.debug(f"REDDIT: subreddit {subreddit}")
 
-                async with asyncio.timeout(60):
+                async with asyncio.timeout(300):
                     while len(parsed_submissions) < fetch_size:
                         logger.debug("REDDIT: while loop")
                         logger.debug(f"REDDIT: len parsed {len(parsed_submissions)}")
@@ -158,6 +158,7 @@ class RedditFeed(Feed):
                                 text = " ".join(bodies)
 
                                 summary = await async_summarize_discussion(text)
+                                logger.debug("REDDIT: summarize")
                                 logger.debug(summary)
 
                                 parsed_submission = self.parse(submission, text, summary)
@@ -200,11 +201,9 @@ class RedditFeed(Feed):
                 async with self.fetch_lock:
                     logger.info("LOCK acquired")
 
-                    # target_cache_size = (
-                    #     ceil(n / 30) * 30
-                    # )  # keep a cache with a size of multiple of 30
-
-                    target_cache_size = 1  # testing
+                    target_cache_size = (
+                        ceil(n / 30) * 30
+                    )  # keep a cache with a size of multiple of 30
 
                     # Check if the background task has already been scheduled
                     if not hasattr(self, "_update_cache_task"):
