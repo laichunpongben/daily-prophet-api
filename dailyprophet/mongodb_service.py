@@ -2,7 +2,7 @@ import logging
 
 from pymongo import MongoClient
 
-from dailyprophet.configs import MONGODB_USER, MONGODB_PASSWORD, MONGODB_CLUSTER
+from .configs import MONGODB_USER, MONGODB_PASSWORD, MONGODB_CLUSTER
 
 logger = logging.getLogger(__name__)
 

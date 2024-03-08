@@ -3,8 +3,8 @@
 from typing import List
 import logging
 
-from dailyprophet.readers.reader import Reader
-from dailyprophet.mongodb_service import MongoDBService
+from .reader import Reader
+from ..mongodb_service import MongoDBService
 
 logger = logging.getLogger(__name__)
 

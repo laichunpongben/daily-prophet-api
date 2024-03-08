@@ -57,7 +57,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 
 if __name__ == "__main__":
-    from dailyprophet.configs import TEST_BEARER_TOKEN
+    from .configs import TEST_BEARER_TOKEN
 
     token = TEST_BEARER_TOKEN
     username = get_current_user(token)

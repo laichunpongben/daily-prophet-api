@@ -7,9 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 import logging
 
-from dailyprophet.feeds.portfolio import FeedPortfolio
-from dailyprophet.feeds.feed_queue import FeedQueue
-from dailyprophet.feeds.feed_factory import FeedFactory
+from ..feeds.portfolio import FeedPortfolio
+from ..feeds.feed_queue import FeedQueue
+from ..feeds.feed_factory import FeedFactory
 
 logger = logging.getLogger(__name__)
 

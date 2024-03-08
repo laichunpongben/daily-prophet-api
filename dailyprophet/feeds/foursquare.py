@@ -2,8 +2,8 @@ import logging
 
 import requests
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.configs import FOURSQUARE_API_KEY
+from .feed import Feed
+from ..configs import FOURSQUARE_API_KEY
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from dailyprophet.readers.reader_manager import ReaderManager
-from dailyprophet.auth import get_current_user
+from .readers.reader_manager import ReaderManager
+from .auth import get_current_user
+from .util import async_wake_up_worker
 
 
 class PortfolioSetting(BaseModel):
@@ -52,6 +53,9 @@ async def pop(
     background_tasks: BackgroundTasks,
     current_user: str = Depends(get_current_user),
 ):
+    # workaround to keep the worker warm when a user is using the service
+    await async_wake_up_worker()
+
     reader = reader_manager[current_user]
 
     feed = await reader.async_pop()

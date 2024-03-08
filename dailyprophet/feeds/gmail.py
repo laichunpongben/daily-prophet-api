@@ -7,7 +7,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from dailyprophet.configs import (
+from ..configs import (
     GMAIL_CREDENTIAL_FILE_NAME,
     GMAIL_ACCOUNT,
 )

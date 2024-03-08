@@ -5,8 +5,8 @@ import logging
 
 import requests
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.configs import (
+from .feed import Feed
+from ..configs import (
     LINKEDIN_CLIENT_ID,
     LINKEDIN_CLIENT_SECRET,
     LINKEDIN_REDIRECT_URI,

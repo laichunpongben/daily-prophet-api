@@ -7,8 +7,8 @@ from math import ceil
 import aiohttp
 from aiohttp import ClientResponseError
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.feeds.util import flatten_dict, expo_decay_weighted_sample
+from .feed import Feed
+from ..util import flatten_dict, expo_decay_weighted_sample
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -61,7 +61,9 @@ class LihkgFeed(Feed):
             return []
 
     def _is_expired(self):
-        return self.cache_expiration is None or datetime.now() >= self.cache_expiration
+        return (
+            self.cache_expiration is None or datetime.utcnow() >= self.cache_expiration
+        )
 
     def _check_cache(self):
         logger.debug("Checking cache")
@@ -70,7 +72,7 @@ class LihkgFeed(Feed):
     def update_cache(self, parsed_items):
         self.cache = parsed_items
         logger.debug(f"Cache size: {len(self.cache)}")
-        self.cache_expiration = datetime.now() + self.cache_duration
+        self.cache_expiration = datetime.utcnow() + self.cache_duration
         logger.debug(f"Cache expiration: {self.cache_expiration}")
 
     async def async_fetch_category(self, n: int):

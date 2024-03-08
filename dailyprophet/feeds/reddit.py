@@ -1,15 +1,12 @@
 # reddit.py
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from math import ceil
 import re
 
-import aiohttp
-from aiohttp import ClientSession, ClientResponseError
-
 from .feed import Feed
-from .util import expo_decay_weighted_sample
+from ..util import expo_decay_weighted_sample, async_worker_fetch
 from ..mongodb_service import MongoDBService
 from ..configs import WORKER_URL
 
@@ -21,6 +18,7 @@ db = MongoDBService("feeds")
 class RedditFeed(Feed):
     def __init__(self, subject: str):
         super().__init__()
+        self.source = "reddit"
         self.subject = subject
         self.fetch_lock = asyncio.Lock()  # Lock to control concurrent fetches
 
@@ -39,25 +37,6 @@ class RedditFeed(Feed):
         valid_cache = db.query(criteria)
         return valid_cache
 
-    async def async_worker_fetch(self, n: int):
-        url = f"{WORKER_URL}/reddit/{self.subject}/{n}"
-        _ = await self.async_fetch_url(url)
-
-    async def async_fetch_url(self, url: str, headers: dict = {}):
-        try:
-            async with ClientSession() as session:
-                logger.debug(f"Fetching: {url}")
-                async with session.get(url, headers=headers) as response:
-                    if response.ok:
-                        return await response.json()
-                    else:
-                        response.raise_for_status()
-        except ClientResponseError as e:
-            raise
-        except Exception as e:
-            logger.error(e)
-            return {}
-
     async def async_fetch(self, n: int):
         try:
             valid_cache = await self._check_cache()
@@ -73,7 +52,9 @@ class RedditFeed(Feed):
                     target_cache_size = (
                         ceil(n / 30) * 30
                     )  # keep a cache with a size of multiple of 30
-                    asyncio.ensure_future(self.async_worker_fetch(target_cache_size))
+                    asyncio.ensure_future(
+                        async_worker_fetch(self.source, self.subject, target_cache_size)
+                    )
                     await asyncio.sleep(1)  # keep the lock longer
 
             sort_key = lambda x: x["ups"] + x["downs"] + x["num_comments"] * 2
@@ -89,7 +70,7 @@ async def test_async_fetch():
     import json
 
     # reddit = RedditFeed("programming")
-    reddit = RedditFeed("singapore dating")
+    reddit = RedditFeed("dating@singapore")
     fetch_size = 1
 
     # Run the async_fetch method and capture the background task

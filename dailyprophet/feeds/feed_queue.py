@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List
 import logging
 
-from .util import flatten_dict
+from ..util import flatten_dict
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class FeedQueue:
         return len(self.q)
 
     def push(self, feeds: List[dict]):
-        current_timestamp = datetime.now().timestamp()
+        current_timestamp = datetime.utcnow().timestamp()
         for feed in feeds:
             feed_with_timestamp = {FeedQueue.timestamp_key: current_timestamp, **feed}
 

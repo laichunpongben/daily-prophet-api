@@ -2,8 +2,8 @@ import logging
 
 import tweepy
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.configs import (
+from .feed import Feed
+from ..configs import (
     TWITTER_BEARER_TOKEN,
     TWITTER_ACCESS_TOKEN,
     TWITTER_ACCESS_TOKEN_SECRET,

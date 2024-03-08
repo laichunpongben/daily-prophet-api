@@ -6,8 +6,8 @@ import logging
 import requests
 import pandas as pd
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.configs import LICHESS_API_TOKEN
+from .feed import Feed
+from ..configs import LICHESS_API_TOKEN
 
 logger = logging.getLogger(__name__)
 

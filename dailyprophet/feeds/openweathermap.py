@@ -1,8 +1,8 @@
 import aiohttp
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.feeds.util import flatten_dict
-from dailyprophet.configs import OPENWEATHERMAP_API_KEY
+from .feed import Feed
+from ..util import flatten_dict
+from ..configs import OPENWEATHERMAP_API_KEY
 
 
 class OpenWeatherMapFeed(Feed):

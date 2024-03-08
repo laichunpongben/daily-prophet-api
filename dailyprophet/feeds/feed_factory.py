@@ -2,12 +2,12 @@
 Single factory across the app
 """
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.feeds.reddit import RedditFeed
-from dailyprophet.feeds.arxiv import ArxivFeed
-from dailyprophet.feeds.youtube import YoutubeFeed
-from dailyprophet.feeds.openweathermap import OpenWeatherMapFeed
-from dailyprophet.feeds.lihkg import LihkgFeed
+from .feed import Feed
+from .reddit import RedditFeed
+from .arxiv import ArxivFeed
+from .youtube import YoutubeFeed
+from .openweathermap import OpenWeatherMapFeed
+from .lihkg import LihkgFeed
 
 
 class FeedFactory:

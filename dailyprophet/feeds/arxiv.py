@@ -6,8 +6,8 @@ import logging
 import aiohttp
 import feedparser
 
-from dailyprophet.feeds.feed import Feed
-from dailyprophet.feeds.util import expo_decay_weighted_sample
+from .feed import Feed
+from ..util import expo_decay_weighted_sample
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ArxivFeed(Feed):
             # Check if the cache is still valid
             if (
                 self.cache is not None
-                and datetime.now() < self.cache_expiration
+                and datetime.utcnow() < self.cache_expiration
                 and n <= len(self.cache)
             ):
                 logger.debug("Fetching from cache")
@@ -63,7 +63,7 @@ class ArxivFeed(Feed):
                     # Update the cache
                     self.cache = parsed_entries
                     logger.debug(f"Cache size: {len(self.cache)}")
-                    self.cache_expiration = datetime.now() + self.cache_duration
+                    self.cache_expiration = datetime.utcnow() + self.cache_duration
                     logger.debug(f"Cache expiration: {self.cache_expiration}")
 
                     return expo_decay_weighted_sample(self.cache, k=n)

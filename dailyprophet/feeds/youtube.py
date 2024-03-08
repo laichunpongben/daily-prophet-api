@@ -7,7 +7,7 @@ import aiohttp
 from aiohttp import ClientResponseError
 
 from dailyprophet.feeds.feed import Feed
-from dailyprophet.feeds.util import expo_decay_weighted_sample
+from dailyprophet.util import expo_decay_weighted_sample
 from dailyprophet.configs import YOUTUBE_API_KEY_0, YOUTUBE_API_KEY_1, YOUTUBE_API_KEY_2
 
 logger = logging.getLogger(__name__)
@@ -154,7 +154,10 @@ class YoutubeFeed(Feed):
 
     async def _check_cache(self):
         logger.debug("Checking cache")
-        if self.cache_expiration is not None and datetime.now() < self.cache_expiration:
+        if (
+            self.cache_expiration is not None
+            and datetime.utcnow() < self.cache_expiration
+        ):
             return self.cache
         else:
             return []
@@ -162,7 +165,7 @@ class YoutubeFeed(Feed):
     def update_cache(self, parsed_items):
         self.cache = parsed_items
         logger.debug(f"Cache size: {len(self.cache)}")
-        self.cache_expiration = datetime.now() + self.cache_duration
+        self.cache_expiration = datetime.utcnow() + self.cache_duration
         logger.debug(f"Cache expiration: {self.cache_expiration}")
 
     def fetch(self, n: int):
