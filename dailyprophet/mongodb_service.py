@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from pymongo import MongoClient
 
@@ -90,10 +91,13 @@ class MongoDBService:
 
         return samples
 
-    def query(self, criteria: dict):
+    def query(self, criteria: dict, size: Optional[int] = None):
         database = self.client[self.db_name]
         collection = database[self.collection_name]
-        return list(collection.find(criteria))
+        if size is not None:
+            return list(collection.find(criteria).limit(size))
+        else:
+            return list(collection.find(criteria))
 
 
 if __name__ == "__main__":

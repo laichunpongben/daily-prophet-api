@@ -22,7 +22,7 @@ class RedditFeed(Feed):
         self.subject = subject
         self.fetch_lock = asyncio.Lock()  # Lock to control concurrent fetches
 
-    async def _check_cache(self):
+    async def _check_valid_cache(self):
         """
         Check if the cache is still valid and return the cached result if possible.
         If the cache is not enough, initiate background fetching to fill the gap.
@@ -37,9 +37,27 @@ class RedditFeed(Feed):
         valid_cache = db.query(criteria)
         return valid_cache
 
+    async def _check_expired_cache(self):
+        logger.debug("Querying expired cache")
+        subject_re = re.compile(self.subject.lower().strip(), re.I)
+        criteria = {
+            "source": "reddit",
+            "subject": subject_re,
+            "expire_time": {"$lt": int(datetime.utcnow().timestamp())},
+        }
+        expired_cache = db.query(criteria, size=50)  # avoid too many
+        return expired_cache
+
     async def async_fetch(self, n: int):
         try:
-            valid_cache = await self._check_cache()
+            valid_cache = await self._check_valid_cache()
+            expired_cache = await self._check_expired_cache()
+
+            sort_key = lambda x: x["ups"] + x["downs"] + x["num_comments"] * 2
+            valid_cache.sort(key=sort_key, reverse=True)
+            expired_cache.sort(key=sort_key, reverse=True)
+            combined_cache = valid_cache + expired_cache
+            combined_cache = combined_cache[:n]
 
             # attempt to fill the cache if no other coroutine already does
             is_locked = self.fetch_lock.locked()
@@ -57,10 +75,7 @@ class RedditFeed(Feed):
                     )
                     await asyncio.sleep(1)  # keep the lock longer
 
-            sort_key = lambda x: x["ups"] + x["downs"] + x["num_comments"] * 2
-            return expo_decay_weighted_sample(
-                sorted(valid_cache, key=sort_key, reverse=True), k=n
-            )
+            return expo_decay_weighted_sample(combined_cache, k=n)
         except Exception as e:
             logger.error(f"Error fetching Reddit posts asynchronously: {e}")
             return []
