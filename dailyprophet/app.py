@@ -1,4 +1,5 @@
 from typing import List
+import asyncio
 import logging
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
@@ -54,7 +55,7 @@ async def pop(
     current_user: str = Depends(get_current_user),
 ):
     # workaround to keep the worker warm when a user is using the service
-    await async_wake_up_worker()
+    _ = asyncio.create_task(async_wake_up_worker())
 
     reader = reader_manager[current_user]
 
